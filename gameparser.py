@@ -80,12 +80,20 @@ def normalise_input(user_input):
     ['go', 'passage', 'south']
 
     """
+    global skip_words
     # Remove punctuation and convert to lower case
     no_punct = remove_punct(user_input).lower()
     word_list = []
     current_word = ""
-
-
-    #
-    # COMPLETE ME!
-    #
+    for char in no_punct:
+        if char != " ":
+            current_word += char
+        elif current_word == "":
+            pass
+        else:
+            word_list.append(current_word)
+            current_word = ""
+    if current_word != "":
+        word_list.append(current_word)
+    word_list = filter_words(word_list, skip_words)
+    return word_list
