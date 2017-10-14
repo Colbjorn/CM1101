@@ -4,8 +4,8 @@ from map import rooms
 from player import *
 from items import *
 from gameparser import *
-
-
+from actions import *
+import time
 
 def list_of_items(items):
     """This function takes a list of items (see items.py for the definition) and
@@ -24,7 +24,12 @@ def list_of_items(items):
     'money, a student handbook, laptop'
 
     """
-    pass
+    lst = ""
+    for item in items:
+        lst += item["name"]
+        if item != items[-1]:
+            lst += ", "
+    return lst
 
 
 def print_room_items(room):
@@ -49,7 +54,8 @@ def print_room_items(room):
     Note: <BLANKLINE> here means that doctest should expect a blank line.
 
     """
-    pass
+    if list_of_items(room["items"]) != "":
+        print("There is a " + list_of_items(room["items"]) + " here.")
 
 
 def print_inventory_items(items):
@@ -62,7 +68,7 @@ def print_inventory_items(items):
     <BLANKLINE>
 
     """
-    pass
+    print("You have " + list_of_items(items) + ".")
 
 
 def print_room(room):
@@ -115,13 +121,15 @@ def print_room(room):
     print()
     print(room["name"].upper())
     print()
-    # Display room description
-    print(room["description"])
+    # Display room description according to actions that were made.
+    if room["changed"]:
+        print(room["alt description"])
+    else:
+        print(room["description"])
+    print()
+    print_room_items(room)
     print()
 
-    #
-    # COMPLETE ME!
-    #
 
 def exit_leads_to(exits, direction):
     """This function takes a dictionary of exits and a direction (a particular
@@ -189,11 +197,13 @@ def print_menu(exits, room_items, inv_items):
     for direction in exits:
         # Print the exit name and where it leads to
         print_exit(direction, exit_leads_to(exits, direction))
-
-    #
-    # COMPLETE ME!
-    #
-    
+    for item in room_items:
+        print("TAKE " + item["id"].upper() + " to take " + item["name"] + ".")
+    for item in inv_items:
+        correct_grammar = item["name"].replace("a ", "")
+        print("DROP " + item["id"].upper() + " to drop your " + correct_grammar + ".")
+        if item == item_sandwich:
+            print("EAT SANDWICH to eat your sandwich.")
     print("What do you want to do?")
 
 
@@ -222,24 +232,69 @@ def execute_go(direction):
     (and prints the name of the room into which the player is
     moving). Otherwise, it prints "You cannot go there."
     """
-    pass
+    global current_room
+    if is_valid_exit(current_room["exits"], direction):
+        current_room = rooms[current_room["exits"][direction]]
+    else:
+        print("You cannot go there.")
+
+
+def overencumbrance_check(new_item):
+    # Iterates through inventory, adds up masses of each object and checks whether mass exceeds a maximum value.
+    current_encumbrance = 0
+    for item in inventory:
+        current_encumbrance += item["mass"]
+    if current_encumbrance + new_item["mass"] > maximum_encumbrance:
+        return False
+    else:
+        return True
 
 
 def execute_take(item_id):
-    """This function takes an item_id as an argument and moves this item from the
-    list of items in the current room to the player's inventory. However, if
-    there is no such item in the room, this function prints
+    """This function takes an item_id as an argument, checks whether
+     the item exceeds maximum encumbrance values and,
+    if it doesn't, moves this item from the list of items in the current
+    room to the player's inventory. Else, it prints
+    "That item is too heavy for me to pick up!"
+    However, if there is no such item in the room, this function prints
     "You cannot take that."
     """
-    pass
-    
+    item_is_there = False
+    for item in current_room["items"]:
+        if item["id"] == item_id:
+            item_is_there = True
+            if overencumbrance_check(item):
+                inventory.append(item)
+                current_room["items"].remove(item)
+            else:
+                print("That item is too heavy for me to pick up!")
+    if not item_is_there:
+        print("You cannot take that.")
+
 
 def execute_drop(item_id):
     """This function takes an item_id as an argument and moves this item from the
     player's inventory to list of items in the current room. However, if there is
     no such item in the inventory, this function prints "You cannot drop that."
     """
-    pass
+    item_is_there = False
+    for item in inventory:
+        if item["id"] == item_id:
+            current_room["items"].append(item)
+            inventory.remove(item)
+            item_is_there = True
+    if not item_is_there:
+        print("You cannot drop that.")
+
+
+def execute_eat(item_id):
+    global sandwich
+    if item_id == "sandwich":
+        print("You eat your sandwich. Delicious!")
+        inventory.remove(item_sandwich)
+        sandwich = True
+    else:
+        print("You can't eat that!")
     
 
 def execute_command(command):
@@ -249,7 +304,6 @@ def execute_command(command):
     execute_take, or execute_drop, supplying the second word as the argument.
 
     """
-
     if 0 == len(command):
         return
 
@@ -270,7 +324,11 @@ def execute_command(command):
             execute_drop(command[1])
         else:
             print("Drop what?")
-
+    elif command[0] == "eat":
+        if len(command) > 1:
+            execute_eat(command[1])
+        else:
+            print("Eat what?")
     else:
         print("This makes no sense.")
 
@@ -308,31 +366,45 @@ def move(exits, direction):
     >>> move(rooms["Reception"]["exits"], "west") == rooms["Office"]
     False
     """
-
     # Next room to go to
     return rooms[exits[direction]]
 
 
 # This is the entry point of our program
 def main():
-
     # Main game loop
-    while True:
+    global biscuits_given
+    while not (rooms["Tutor"]["changed"] and sandwich):
         # Display game status (room description, inventory etc.)
         print_room(current_room)
         print_inventory_items(inventory)
 
         # Show the menu with possible actions and ask the player
         command = menu(current_room["exits"], current_room["items"], inventory)
-
-        # Execute the player's command
-        execute_command(command)
-
-
+        # Check whether the player's command is a special action. If so, executes special action.
+        # Otherwise executes ordinary command.
+        if tuple(command) in current_room["actions"]:
+            actions[current_room["actions"][tuple(command)]]()
+        else:
+            # Execute the player's command
+            execute_command(command)
+        print(rooms["Tutor"]["changed"])
+        print(sandwich)
+    else:
+        print("""
+         __     ______  _    _  __          _______ _   _   _ 
+         \ \   / / __ \| |  | | \ \        / /_   _| \ | | | |
+          \ \_/ / |  | | |  | |  \ \  /\  / /  | | |  \| | | |
+           \   /| |  | | |  | |   \ \/  \/ /   | | | . ` | | |
+            | | | |__| | |__| |    \  /\  /   _| |_| |\  | |_|
+            |_|  \____/ \____/      \/  \/   |_____|_| \_| (_)
+                                                              """)
 
 # Are we being run as a script? If so, run main().
 # '__main__' is the name of the scope in which top-level code executes.
 # See https://docs.python.org/3.4/library/__main__.html for explanation
+
+
 if __name__ == "__main__":
     main()
 
