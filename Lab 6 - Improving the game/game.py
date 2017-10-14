@@ -55,7 +55,8 @@ def print_room_items(room):
 
     """
     if list_of_items(room["items"]) != "":
-        print("There is a " + list_of_items(room["items"]) + " here.")
+        print("There is " + list_of_items(room["items"]) + " here.")
+        print()
 
 
 def print_inventory_items(items):
@@ -69,6 +70,7 @@ def print_inventory_items(items):
 
     """
     print("You have " + list_of_items(items) + ".")
+    print()
 
 
 def print_room(room):
@@ -110,7 +112,7 @@ def print_room(room):
     <BLANKLINE>
     MJ AND SIMON'S ROOM
     <BLANKLINE>
-    You are leaning agains the door of the systems managers'
+    You are leaning against the door of the systems managers'
     room. Inside you notice Matt "MJ" John and Simon Jones. They
     ignore you. To the north is the reception.
     <BLANKLINE>
@@ -128,7 +130,6 @@ def print_room(room):
         print(room["description"])
     print()
     print_room_items(room)
-    print()
 
 
 def exit_leads_to(exits, direction):
@@ -288,6 +289,7 @@ def execute_drop(item_id):
 
 
 def execute_eat(item_id):
+    # Eats a sandwich. If item is not a sandwich, does not eat anything.
     global sandwich
     if item_id == "sandwich":
         print("You eat your sandwich. Delicious!")
